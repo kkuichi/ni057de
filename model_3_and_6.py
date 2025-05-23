@@ -163,7 +163,7 @@ plt.tight_layout()
 plt.show()
 
 !pip install torch numpy datasets transformers scikit-learn
-
+#Model failed
 import torch
 import numpy as np
 import pandas as pd
@@ -174,11 +174,11 @@ import matplotlib.pyplot as plt
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments
 from transformers import Trainer
 
-# ✅ Настройки
+
 model_name = "microsoft/deberta-v3-small"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-# ✅ Загрузка и подготовка данных
+
 df = pd.read_csv("toxigen.csv")
 df = df.rename(columns={"group": "label"})
 labels = sorted(df.label.unique())
@@ -189,7 +189,7 @@ df["label"] = df["label"].map(label2id)
 def tokenize(batch):
     return tokenizer(batch["generation"], truncation=True, padding="max_length", max_length=96)  # сокращено для скорости
 
-# ✅ Тестовый датасет
+
 splitter = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
 train_idx, test_idx = next(splitter.split(df["generation"], df["label"]))
 test_df = df.iloc[test_idx].reset_index(drop=True)
@@ -198,7 +198,7 @@ test_dataset = test_dataset.map(tokenize)
 test_dataset = test_dataset.remove_columns(["generation"])
 y_true = test_df["label"].values
 
-# ✅ Аргументы тренировки
+
 training_args = TrainingArguments(
     output_dir="./results",
     per_device_train_batch_size=24,  # увеличено для ускорения
@@ -213,7 +213,7 @@ training_args = TrainingArguments(
     gradient_accumulation_steps=1  # можно увеличить до 2, если памяти не хватает
 )
 
-# ✅ Кастомный Trainer с CrossEntropy
+
 class CustomTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         labels = inputs.pop("labels")
@@ -223,7 +223,7 @@ class CustomTrainer(Trainer):
         loss = loss_fct(logits, labels)
         return (loss, outputs) if return_outputs else loss
 
-# ✅ Функция тренировки одной модели
+
 def train_model(seed):
     split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=seed)
     train_idx, _ = next(split.split(df["generation"], df["label"]))
@@ -245,17 +245,17 @@ def train_model(seed):
     preds = trainer.predict(test_dataset).predictions
     return preds
 
-# ✅ Тренировка трёх моделей
+
 preds1 = train_model(seed=101)
 preds2 = train_model(seed=202)
 preds3 = train_model(seed=303)
 
-# ✅ Ансамблирование soft voting
+
 ensemble_logits = (preds1 + preds2 + preds3) / 3
 ensemble_preds = np.argmax(ensemble_logits, axis=1)
 
-# ✅ Метрики
-print("\n📊 Ensemble Classification Report:")
+
+print("\n Ensemble Classification Report:")
 print(classification_report(
     y_true,
     ensemble_preds,
@@ -263,7 +263,7 @@ print(classification_report(
     digits=4
 ))
 
-# ✅ F1-график
+
 report = classification_report(
     y_true,
     ensemble_preds,
